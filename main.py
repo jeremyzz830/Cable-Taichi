@@ -1,4 +1,6 @@
 import taichi as ti
+from math import sqrt
+
 ti.init(arch=ti.vulkan)  # Alternatively, ti.init(arch=ti.cpu)
 
 n = 128
@@ -9,8 +11,11 @@ ball_radius = 0.3
 ball_center = ti.Vector.field(3, dtype=float, shape=(1, ))
 ball_center[0] = [0, 0, 0]
 
-x = ti.Vector.field(3, dtype=float, shape= n)
-v = ti.Vector.field(3, dtype=float, shape= n)
+CurPos = ti.Vector.field(3, dtype=float, shape=n)
+OldPos = ti.Vector.field(3, dtype=float, shape=n)
+Vel = ti.Vector.field(3, dtype=float, shape= n)
+gravity = ti.field(dtype=float,shape=(3))
+gravity = [0,0,-9.8];
 force = ti.Vector.field(3, dtype=float, shape= n)
 dm = 0.1
 # you need to define more parameters here, such as stiffness,dt,length of spring .......
@@ -35,39 +40,64 @@ def update_Cube1():
 def update_Cube2():
     pass
 
+@ti.func
+def euclidean_dist(point_a : ti.Vector, point_b : ti.Vector) -> float:
+
+    d_square =  (point_a[0] - point_b[0]) * (point_a[0] - point_b[0]) +\
+                (point_a[1] - point_b[1]) * (point_a[1] - point_b[1]) +\
+                (point_a[2] - point_b[2]) * (point_a[2] - point_b[2])
+
+    d = sqrt(d_square)
+    return d
+    
+
 
 @ti.kernel
-def initialize_mass_points():
+def initialize_cable_points():
 
-    for i in x:
-        x[i] = [
-            i * quad_size , 0.6,
+    for i in CurPos:
+        CurPos[i] = [
+            i * quad_size,
+            0.6,
             0.5
         ]
-        v[i] = [0, -1, 0]
+        OldPos[i] = [
+            i * quad_size,
+            0.6,
+            0.49
+        ]
+        Vel[i] = [0, 0, 0]
 
 
 @ti.kernel
-def substep():
+def update_cable():
     #显式欧拉法（可能会不稳定）
     #velocity verlet 更新方法
-
-
     #step1 计算每个质点受到的力
-   # compute_force()
+    #compute_force()
     #step2 更新加速度
     #step3 更新速度
-
     #for i in ti.grouped(v):
     #    v = v + force/dm * dt
     #step4 利用速度更新指点的位置
 
 
 
+    # Simulation
+    for i in ti.grouped(CurPos):
+        Vel[i] = CurPos[i] - OldPos[i]
+        OldPos[i] = CurPos[i]
+        CurPos[i] += Vel[i]
+    
+    # Constraints
+    CurPos[0] = cube1_vertex[0] # Starting Point is Fixed
+    
+    for i in range(n-1):
+        firstseg = CurPos[i]
+        secondseg = CurPos[i+1]
 
-    for i in ti.grouped(x):
-        #pass;
-        x[i] += v[i] * 0.01;
+        eu_dist = euclidean_dist(firstseg,secondseg)
+        print(eu_dist)
 
 
 @ti.kernel
@@ -87,13 +117,13 @@ scene = ti.ui.Scene()
 camera = ti.ui.Camera()
 camera.position(5, 2, 2)
 
-initialize_mass_points()
+initialize_cable_points()
 
 while window.running:
 
-    substep()
+    update_cable()
     boundary_condition()
-
+    # print(CurPos[1][1])
 
     camera.track_user_inputs(window, movement_speed=0.03, hold_key=ti.ui.RMB)
     scene.set_camera(camera)
@@ -102,6 +132,6 @@ while window.running:
     scene.mesh(cube1_vertex);
 
     # Draw 3d-lines in the scene
-    scene.lines(x, color = (0.28, 0.68, 0.99), width = 5.0)
+    scene.lines(CurPos, color = (0.28, 0.68, 0.99), width = 5.0)
     canvas.scene(scene)
     window.show()
