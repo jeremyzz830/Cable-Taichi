@@ -3,9 +3,9 @@ import taichi as ti
 
 ti.init(arch=ti.vulkan)  # Alternatively, ti.init(arch=ti.cpu)
 
-n = 100
+n = 500
 seg_len = 2 / n
-theta = 0.0
+theta = ti.field(float, 1)
 
 CurPos = ti.Vector.field(3, dtype=float, shape=n)
 OldPos = ti.Vector.field(3, dtype=float, shape=n)
@@ -26,7 +26,7 @@ cube2_vertex = ti.Vector.field(3, dtype=float, shape= len(data))
 scale = 0.25
 for i in range(len(data)):
     cube1_vertex[i] = [scale* data[i][0],scale * data[i][1],scale*data[i][2]]
-    cube2_vertex[i] = [scale* data[i][0] + 2,scale * data[i][1],scale*data[i][2]]
+    cube2_vertex[i] = [scale* data[i][0] + 1,scale * data[i][1],scale*data[i][2]-0.5]
 
 
 @ti.kernel
@@ -36,9 +36,12 @@ def update_Cube1():
         cube1_vertex[i] += offset
 
 @ti.kernel
-def update_Cube2(theta: float):
+def update_Cube2():
+    angle = theta[0]
+    # angle += 0.01
+    # theta[0] = angle
     print("updating cube2")
-    offset = ti.Vector([ti.sin(theta),0.0,0.0])
+    offset = ti.Vector([0.01 * ti.sin(angle),0.0,0.0])
     for i in ti.grouped(cube2_vertex):
         cube2_vertex[i] += offset
 
@@ -71,7 +74,7 @@ def update_cable():
     for i in ti.grouped(CurPos):
         Vel[i] = CurPos[i] - OldPos[i]
         OldPos[i] = CurPos[i]
-        G = ti.Vector([deltaTime*0,deltaTime*-9.8,deltaTime*0])
+        G = ti.Vector([deltaTime*0,deltaTime*0.0,deltaTime*-9.8])
         CurPos[i] += (Vel[i] + G) * 0.97 # Gravity Term needs to be verifiedc
         # CurPos[i] += Vel[i]
     # print(OldPos)
@@ -84,7 +87,7 @@ def update_cable():
     while loop_count < 100:
         loop_count += 1
         CurPos[0] = cube1_vertex[10]
-        CurPos[n-1] = cube2_vertex[0]
+        CurPos[n-1] = cube2_vertex[1]
         for i in range(n-1):
             first_seg = CurPos[i]
             # print("first_seg is :",first_seg)
@@ -125,8 +128,9 @@ canvas = window.get_canvas()
 canvas.set_background_color((0.3, 0.3, 0.4))
 scene = ti.ui.Scene()
 camera = ti.ui.Camera()
-camera.position(5, 2, 2)
+camera.position(-5, -5, 5)
 camera.lookat(0, 0, 0)
+camera.up(0, 0, 1)
 
 initialize_cable_points()
 
@@ -134,9 +138,8 @@ while window.running:
 
     update_cable()
     update_Cube1()
-
-    theta = theta + 0.01
-    update_Cube2(theta=theta)
+    theta[0] += 0.01
+    update_Cube2()
     # print(CurPos[1][1])
 
     camera.track_user_inputs(window, movement_speed=.03, hold_key=ti.ui.SPACE)
