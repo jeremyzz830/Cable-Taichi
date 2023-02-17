@@ -3,7 +3,7 @@ import taichi as ti
 
 ti.init(arch=ti.vulkan)  # Alternatively, ti.init(arch=ti.cpu)
 
-n = 500
+n =128
 seg_len = 2 / n
 theta = ti.field(float, 1)
 
