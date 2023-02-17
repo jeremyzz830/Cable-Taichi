@@ -1,0 +1,2 @@
+
+-DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_INCLUDE_DIR=/usr/include/python3.8m -DCATKIN_DEVEL_PREFIX=/home/jeremy/Cable-Taichi/devel -DCMAKE_INSTALL_PREFIX=/home/jeremy/Cable-Taichi/install -G Unix Makefiles
