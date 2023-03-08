@@ -12,13 +12,13 @@ def plot_interp_3D():
     pass
 
 
-def main();
+def main():
     
         rospy.init_node('sub_pose')
         rospy.Subscriber('/NDI_plot', PoseStamped, callback)
         rospy.spin()
 
 
-if __name__ == '__main__';
+if __name__ == '__main__':
     main()
     

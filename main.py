@@ -1,7 +1,8 @@
 from __future__ import annotations
 import taichi as ti
+import numpy as np
 
-ti.init(arch=ti.vulkan)  # Alternatively, ti.init(arch=ti.cpu)
+ti.init(arch=ti.cpu)  # Alternatively, ti.init(arch=ti.cpu)
 
 n =128
 seg_len = 2 / n
@@ -9,9 +10,11 @@ theta = ti.field(float, 1)
 
 CurPos = ti.Vector.field(3, dtype=float, shape=n)
 OldPos = ti.Vector.field(3, dtype=float, shape=n)
+offset_2 = ti.Vector.field(3, dtype=ti.float64, shape=1)
+offset_2[0] = [0.0, 0.0, 0.0]
 Vel = ti.Vector.field(3, dtype=float, shape= n)
 gravity = ti.field(dtype=float,shape=(3))
-gravity = [0,-9.8,0];
+gravity = [0,-9.8,0]
 deltaTime = 0.0001
 force = ti.Vector.field(3, dtype=float, shape= n)
 dm = 0.1
@@ -37,13 +40,10 @@ def update_Cube1():
 
 @ti.kernel
 def update_Cube2():
-    angle = theta[0]
-    # angle += 0.01
-    # theta[0] = angle
-    print("updating cube2")
-    offset = ti.Vector([0.01 * ti.sin(angle),0.0,0.0])
+    print("offset 2 is : ", offset_2[0][0])
+    
     for i in ti.grouped(cube2_vertex):
-        cube2_vertex[i] += offset
+        cube2_vertex[i] += 0.01 * offset_2[0]
 
 @ti.func
 def euclidean_dist(point_a, point_b) -> float:
@@ -69,7 +69,7 @@ def initialize_cable_points():
 @ti.kernel
 def update_cable():
 
-    print("update cable")
+    # print("update cable")
     # Simulation
     for i in ti.grouped(CurPos):
         Vel[i] = CurPos[i] - OldPos[i]
@@ -78,7 +78,7 @@ def update_cable():
         CurPos[i] += (Vel[i] + G) * 0.97 # Gravity Term needs to be verifiedc
         # CurPos[i] += Vel[i]
     # print(OldPos)
-    print(Vel[1])
+    # print(Vel[1])
 
 
     # Constraints
@@ -96,7 +96,7 @@ def update_cable():
                 ti.TaichiTypeError("first_seg is nan")
             
             eu_dist = euclidean_dist(CurPos[i],CurPos[i+1])
-            print("eu_dist is :",eu_dist)
+            # print("eu_dist is :",eu_dist)
             error = eu_dist - seg_len
             direction = (CurPos[i+1] - CurPos[i]) / eu_dist
 
@@ -108,19 +108,15 @@ def update_cable():
 
             # test whether the distance is corrected
             eu_dist = euclidean_dist(CurPos[i],CurPos[i+1])
-            print(eu_dist)
+            # print(eu_dist)
  
 
-
-@ti.kernel
-def boundary_condition():
-    pass
     #保持你的绳子的两个节点跟随fixed的固定运动
     #直接把x赋值为你希望他所在位置
 
-@ti.kernel
-def compute_force():
-    pass
+# @ti.kernel
+# def compute_force():
+#     pass
 
 
 window = ti.ui.Window("Test for Drawing 3d-lines", (768, 768))
@@ -131,14 +127,18 @@ camera = ti.ui.Camera()
 camera.position(-5, -5, 5)
 camera.lookat(0, 0, 0)
 camera.up(0, 0, 1)
+theta[0] = 0.0
 
 initialize_cable_points()
 
 while window.running:
 
+    theta[0] += 0.01
+    offset_2[0][0] = ti.math.cos(theta[0])
+    print(offset_2[0][0])
+
     update_cable()
     update_Cube1()
-    theta[0] += 0.01
     update_Cube2()
     # print(CurPos[1][1])
 
